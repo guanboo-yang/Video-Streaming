@@ -175,7 +175,6 @@ private:
     }
 
     string get_content_type(string file_type) {
-        // html, css, js, png, ico, webp, svg, bin
         if (file_type == "html") return "Content-Type: text/html\r\n";
         else if (file_type == "css") return "Content-Type: text/css\r\n";
         else if (file_type == "js") return "Content-Type: text/javascript\r\n";
@@ -183,6 +182,7 @@ private:
         else if (file_type == "ico") return "Content-Type: image/x-icon\r\n";
         else if (file_type == "webp") return "Content-Type: image/webp\r\n";
         else if (file_type == "svg") return "Content-Type: image/svg+xml\r\n";
+        else if (file_type == "mp4") return "Content-Type: video/mp4\r\n";
         else return "Content-Type: application/octet-stream\r\n";
     }
 };

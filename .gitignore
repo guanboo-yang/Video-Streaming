@@ -1,5 +1,6 @@
 ### User Define ###
 server
+*.mp4
 
 
 # Created by https://www.toptal.com/developers/gitignore/api/osx,linux,python,pycharm+all,visualstudiocode
