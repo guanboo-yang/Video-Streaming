@@ -11,7 +11,7 @@
 using namespace std;
 
 #define BUFF_SIZE 8192
-#define ROOT      "./src"
+#define ROOT      "./dist"
 
 struct http_request {
     string method;
@@ -249,6 +249,7 @@ void sig_handler(int signo) {
 }
 
 int main(int argc, char *argv[]) {
+    if (argc != 2) ERR_EXIT("Usage: %s <port>", argv[0])
     signal(SIGPIPE, sig_handler);
     int port_num = atoi(argv[1]);
     http_server server(port_num);

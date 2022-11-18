@@ -5,7 +5,7 @@ TARGET = server
 
 all: $(TARGET)
 
-server: web_server.cpp
+server: src/server.cpp
 	$(CC) -std=c++11 $^ -o $@
 
 clean:
