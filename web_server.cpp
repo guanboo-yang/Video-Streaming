@@ -56,7 +56,8 @@ public:
         struct hostent *host = gethostbyname(hostname);
         if (host == NULL) ERR_EXIT("gethostbyname error\n")
         ip = inet_ntoa(*(struct in_addr *) host->h_addr_list[0]);
-
+        for (int i = 0; host->h_addr_list[i]; i++)
+            cerr << "ip: " << inet_ntoa(*(struct in_addr *) host->h_addr_list[i]) << endl;
         max_fd = server_fd;
         max_conn_fd = FD_SETSIZE;
         FD_ZERO(&read_fds);
