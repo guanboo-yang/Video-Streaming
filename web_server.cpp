@@ -12,11 +12,37 @@ using namespace std;
 #define BUFF_SIZE 8192
 #define ROOT      "./src"
 
+struct http_request {
+    string method;
+    string path;
+    string version;
+    map<string, string> headers;
+    string body;
+    string to_string() {
+        string res = method + " " + path + " " + version + "\r\n";
+        for (auto &header : headers) {
+            res += header.first + ": " + header.second + "\r\n";
+        }
+        res += "\r\n";
+        res += body;
+        return res;
+    }
+};
+
 struct http_response {
-    string status;
-    string content_type;
-    string content;
-    int content_length;
+    string version;
+    int status_code;
+    string status_msg;
+    map<string, string> headers;
+    string body;
+    string to_string() {
+        string res = version + " " + ::to_string(status_code) + " " + status_msg + "\r\n";
+        for (auto &header : headers)
+            res += header.first + ": " + header.second + "\r\n";
+        res += "\r\n";
+        res += body;
+        return res;
+    }
 };
 
 #define ERR_EXIT(...)                 \
@@ -31,6 +57,7 @@ public:
         port = _port;
         init_server();
         cerr << "Server created at " << ip << ":" << port << " (" << server_fd << ")" << endl;
+        cerr << "---------------------------------------" << endl;
     }
 
     void init_server() {
@@ -79,6 +106,7 @@ public:
             FD_SET(conn_fd, &read_fds);
             if (conn_fd > max_fd) max_fd = conn_fd;
             cerr << "\033[32mNew connection from " << inet_ntoa(client_addr.sin_addr) << ":" << ntohs(client_addr.sin_port) << " (" << conn_fd << ")\033[0m" << endl;
+            cerr << "---------------------------------------" << endl;
         }
         // read from existing connections
         for (int conn_i = 0; conn_i <= max_fd; conn_i++) {
@@ -97,6 +125,7 @@ public:
                 }
                 cerr << "Read " << ret << " bytes (" << conn_i << ")" << endl;
                 handle_request(conn_i);
+                cerr << "---------------------------------------" << endl;
             }
         }
     }
@@ -109,7 +138,6 @@ private:
     string ip;
     fd_set read_fds, working_read_fds;
     char buf[BUFF_SIZE];
-    http_response response;
 
     void close_conn(int conn_fd) {
         close(conn_fd);
@@ -117,18 +145,19 @@ private:
         cerr << "\033[31mConnection closed (" << conn_fd << ")\033[0m" << endl;
     }
 
-    void send_response(int conn_fd, string response) {
-        send(conn_fd, response.c_str(), response.length(), 0);
+    void send_string(int conn_fd, string res) {
+        send(conn_fd, res.c_str(), res.length(), 0);
     }
 
-    void handle_request(int conn_fd) {
+    http_request parse_request() {
+        http_request req;
         string method, path, version;
+        map<string, string> headers;
+        string header, key, value;
+        char *_header;
         method = strtok(buf, " ");
         path = strtok(NULL, " ");
         version = strtok(NULL, "\r\n");
-        map<string, string> headers;
-        char *_header;
-        string header, key, value;
         while (true) {
             _header = strtok(NULL, "\r\n");
             if (_header == NULL) break;
@@ -137,34 +166,54 @@ private:
             value = header.substr(header.find(": ") + 2);
             headers[key] = value;
         }
-        cerr << method << " " << path << " " << version << endl;
-        if (method == "GET") handle_get(conn_fd, path);
+        req.method = method;
+        req.path = path;
+        req.version = version;
+        req.headers = headers;
+        return req;
+    }
+
+    void handle_request(int conn_fd) {
+        http_request req = parse_request();
+        if (req.method == "GET")
+            handle_get(conn_fd, req);
         return;
     }
 
-    int handle_get(int conn_fd, string path) {
-        string file = ROOT + path;
-        if (path == "/") file += "index.html";
+    int handle_get(int conn_fd, http_request &req) {
+        http_response res;
+        res.version = req.version;
+        string file = ROOT + req.path;
+        if (file[file.length() - 1] == '/') file += "index.html";
         cerr << "File path: " << file << endl;
-        string file_type = file.substr(file.find_last_of('.') + 1);
-        response.content_type = get_content_type(file_type);
         if (access(file.c_str(), F_OK) == -1) {
-            send(conn_fd, "HTTP/1.1 404 Not Found\r\nContent-Length: 0\r\n\r\n", 44, 0);
-            close_conn(conn_fd);
+            res.status_code = 404;
+            res.status_msg = "Not Found";
+            res.headers["Content-Type"] = "text/html";
+            res.headers["Content-Length"] = "0";
+            send_string(conn_fd, res.to_string());
             return 0;
         }
         ifstream fin(file, ios::binary);
         if (!fin) {
             cerr << "File open error" << endl;
-            send(conn_fd, "HTTP/1.1 500 Internal Server Error\r\nContent-Length: 0\r\n\r\n", 55, 0);
-            close_conn(conn_fd);
+            res.status_code = 500;
+            res.status_msg = "Internal Server Error";
+            res.headers["Content-Type"] = "text/html";
+            res.headers["Content-Length"] = "0";
+            send_string(conn_fd, res.to_string());
             return 0;
         }
+        string file_type = file.substr(file.find_last_of('.') + 1);
+        res.headers["Content-Type"] = get_content_type(file_type);
         fin.seekg(0, ios::end);
         int file_size = fin.tellg();
         fin.seekg(0, ios::beg);
         cerr << "File size: " << file_size << endl;
-        send_response(conn_fd, "HTTP/1.1 200 OK\r\n" + response.content_type + "Content-Length: " + to_string(file_size) + "\r\n\r\n");
+        res.status_code = 200;
+        res.status_msg = "OK";
+        res.headers["Content-Length"] = to_string(file_size);
+        send_string(conn_fd, res.to_string());
         memset(buf, 0, sizeof(buf));
         while (fin.read(buf, BUFF_SIZE)) {
             send(conn_fd, buf, BUFF_SIZE, 0);
@@ -175,21 +224,27 @@ private:
     }
 
     string get_content_type(string file_type) {
-        if (file_type == "html") return "Content-Type: text/html\r\n";
-        else if (file_type == "css") return "Content-Type: text/css\r\n";
-        else if (file_type == "js") return "Content-Type: text/javascript\r\n";
-        else if (file_type == "png") return "Content-Type: image/png\r\n";
-        else if (file_type == "ico") return "Content-Type: image/x-icon\r\n";
-        else if (file_type == "webp") return "Content-Type: image/webp\r\n";
-        else if (file_type == "svg") return "Content-Type: image/svg+xml\r\n";
-        else if (file_type == "mp4") return "Content-Type: video/mp4\r\n";
-        else return "Content-Type: application/octet-stream\r\n";
+        if (file_type == "html") return "text/html";
+        else if (file_type == "css") return "text/css";
+        else if (file_type == "js") return "text/javascript";
+        else if (file_type == "png") return "image/png";
+        else if (file_type == "ico") return "image/x-icon";
+        else if (file_type == "webp") return "image/webp";
+        else if (file_type == "svg") return "image/svg+xml";
+        else if (file_type == "mp4") return "video/mp4";
+        else return "application/octet-stream";
     }
 };
 
 // client close the socket when server is sending data
 void sig_handler(int signo) {
-    cerr << "SIGPIPE" << endl;
+    switch (signo) {
+        case SIGPIPE:
+            cerr << "SIGPIPE: Ignore" << endl;
+            break;
+        default:
+            break;
+    }
 }
 
 int main(int argc, char *argv[]) {
