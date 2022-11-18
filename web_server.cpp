@@ -187,13 +187,13 @@ private:
     }
 };
 
-// signal handler closes the server
+// client close the socket when server is sending data
 void sig_handler(int signo) {
-    cerr << "Closing server..." << endl;
-    exit(0);
+    cerr << "SIGPIPE" << endl;
 }
 
 int main(int argc, char *argv[]) {
+    signal(SIGPIPE, sig_handler);
     int port_num = atoi(argv[1]);
     http_server server(port_num);
     while (1) server.loop();
