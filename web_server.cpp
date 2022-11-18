@@ -7,6 +7,7 @@
 #include <unistd.h>
 #include <netdb.h>
 #include <fcntl.h>
+#include <signal.h>
 using namespace std;
 
 #define BUFF_SIZE 8192
