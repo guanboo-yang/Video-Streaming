@@ -26,28 +26,81 @@ body {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  position: fixed;
+  position: absolute;
   top: 0;
   background-color: #121212;
   z-index: 1;
 }
 
 .nav-logo {
-  max-height: 75%;
+  max-height: 20px;
+}
+
+.search-bar {
+  flex-grow: 1;
+  max-width: 600px;
+  height: 40px;
+  border: none;
+  border-radius: 50vh;
+  padding: 0 12px 0 18px;
+  margin: 0 12px;
+  font-size: 1rem;
+  background-color: #1f1f1f;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  transition: all 0.2s ease-in-out;
+}
+
+.search-bar:hover {
+  background-color: #2f2f2f;
+}
+
+.search-input {
+  width: 100%;
+  height: 26px;
+  border: none;
+  outline: none;
+  font-size: 1rem;
+  background-color: transparent;
+  color: #fff;
+  margin-right: 10px;
+}
+
+.search-input::placeholder {
+  font-family: Lato, sans-serif;
+  color: #aaa;
 }
 
 .search-btn {
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  background-color: #303030;
-  fill: #fff;
   border: none;
+  border-radius: 50vh;
+  background-color: transparent;
   display: flex;
   justify-content: center;
   align-items: center;
   cursor: pointer;
-  transition: all 0.3s ease-in-out;
+}
+
+.search-btn svg {
+  width: 100%;
+  height: 100%;
+  fill: #aaa;
+}
+
+.btn {
+  background-color: #1f1f1f;
+  border: none;
+  color: #fff;
+  border-radius: 50vh;
+  padding: 10px 16px;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: all 0.2s ease-in-out;
+}
+
+.btn:hover {
+  background-color: #2f2f2f;
 }
 
 main {
@@ -57,13 +110,17 @@ main {
   height: 100%;
   display: flex;
   flex-direction: column;
+  align-items: center;
   margin-top: 56px;
 }
 
 .video-container {
   width: 100%;
+  /* aspect-ratio: 16 / 9; */
+  min-height: 100%;
   max-height: 100%;
   padding: 0;
+  background: #000;
 }
 
 video {
@@ -78,8 +135,11 @@ video:focus {
 
 .container {
   width: 100%;
+  max-width: 1800px;
   height: 100%;
   display: flex;
   flex-direction: column;
-  padding: 24px;
+  padding: 12px 24px;
+  margin-bottom: 24px;
+  object-fit: contain;
 }

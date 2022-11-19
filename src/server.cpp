@@ -11,7 +11,7 @@
 using namespace std;
 
 #define BUFF_SIZE 8192
-#define ROOT      "./dist"
+#define ROOT      "dist"
 
 struct http_request {
     string method;
@@ -185,7 +185,11 @@ private:
         http_response res;
         res.version = req.version;
         string file = ROOT + req.path;
-        if (file[file.length() - 1] == '/') file += "index.html";
+        // for SPA
+        if (file.find('.') == string::npos) {
+            file = ROOT;
+            file += "/index.html";
+        }
         cerr << "File path: " << file << endl;
         if (access(file.c_str(), F_OK) == -1) {
             res.status_code = 404;
