@@ -143,3 +143,84 @@ video:focus {
   margin-bottom: 24px;
   object-fit: contain;
 }
+
+.container .title {
+  font-size: 1.25rem;
+  font-weight: 700;
+}
+
+.container .author {
+  display: flex;
+  align-items: center;
+  margin-top: 12px;
+}
+
+.container .author .avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  margin-right: 12px;
+}
+
+.container .author .name p {
+  font-size: 1rem;
+  font-weight: 700;
+  margin-bottom: 2px;
+}
+
+.container .author .name span {
+  font-size: 0.8rem;
+  color: #aaa;
+}
+
+.container .author .btn {
+  margin-left: 36px;
+}
+
+.comments-num {
+  font-size: 1rem;
+  font-weight: 700;
+  margin-top: 24px;
+}
+
+ul.comments {
+  margin-top: 24px;
+  width: 100%;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+ul.comments li {
+  font-size: 0.8rem;
+  text-decoration: none;
+  display: flex;
+  align-items: flex-start;
+}
+
+ul.comments li .avatar {
+  width: clamp(24px, 6vw, 36px);
+  height: clamp(24px, 6vw, 36px);
+  border-radius: 50vh;
+  margin-right: 12px;
+}
+
+ul.comments li .name {
+  margin-bottom: 4px;
+}
+
+ul.comments li .name span {
+  font-weight: 700;
+}
+
+ul.comments li .name span.time {
+  font-weight: 500;
+  color: #aaa;
+  margin-left: 4px;
+}
+
+ul.comments li .comment-text {
+  font-size: 0.9rem;
+  line-height: 1.35;
+}
