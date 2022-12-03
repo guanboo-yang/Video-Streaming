@@ -65,3 +65,36 @@
 #define LOOP_DETECTED           508, "Loop Detected", "WebDAV; RFC 5842"
 #define NOT_EXTENDED            510, "Not Extended", "RFC 2774"
 #define NETWORK_AUTH_REQUIRED   511, "Network Authentication Required", "RFC 6585"
+
+struct http_request {
+    string method;
+    string path;
+    string version;
+    map<string, string> headers;
+    string body;
+    string to_string() {
+        string res = method + " " + path + " " + version + "\r\n";
+        for (auto &header : headers) {
+            res += header.first + ": " + header.second + "\r\n";
+        }
+        res += "\r\n";
+        res += body;
+        return res;
+    }
+};
+
+struct http_response {
+    string version;
+    int status_code;
+    string status_msg;
+    map<string, string> headers;
+    string body;
+    string to_string() {
+        string res = version + " " + ::to_string(status_code) + " " + status_msg + "\r\n";
+        for (auto &header : headers)
+            res += header.first + ": " + header.second + "\r\n";
+        res += "\r\n";
+        res += body;
+        return res;
+    }
+};

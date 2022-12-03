@@ -1,4 +1,4 @@
-CC = g++
+INCLUDE = -Iinc
 TARGET = server
 
 .PHONY: clean
@@ -6,7 +6,7 @@ TARGET = server
 all: $(TARGET)
 
 server: src/server.cpp
-	$(CC) -std=c++11 $^ -o $@
+	$(CXX) -std=c++11 $^ -o $@ $(INCLUDE)
 
 clean:
-	rm -f $(TARGET)
+	$(RM) $(TARGET)
