@@ -134,7 +134,7 @@ protected:
     http_request parse_request();
     int handle_get(int conn_fd, http_request &req);
     void send_string(int conn_fd, string res);
-    void send_error(int conn_fd, http_request &req, int code, string msg = "", string desc = "");
+    void send_error(int conn_fd, http_request &req, int code, string msg, string desc);
     string get_content_type(string file_type);
 };
 
@@ -259,7 +259,7 @@ int main(int argc, char *argv[]) {
     /* ignore SIGPIPE */
     signal(SIGPIPE, SIG_IGN);
     int port_num = atoi(argv[1]);
-    basic_server server(port_num);
+    http_server server(port_num);
     /* start server */
     while (1) server.loop();
     return 0;
