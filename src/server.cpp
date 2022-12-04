@@ -8,6 +8,7 @@
 #include <netdb.h>
 #include <fcntl.h>
 #include <signal.h>
+#include <thread>
 using namespace std;
 
 #include "http.hpp"
@@ -16,14 +17,15 @@ using namespace std;
 #define BUFF_SIZE 8192
 #define ROOT      "dist"
 
-class basic_server {
+/* server implemented using select */
+class select_server {
 public:
     /* public attributes */
     int port;
     string ip;
 
     /* public methods */
-    basic_server(int port);
+    select_server(int port);
     void loop();
 
 protected:
@@ -40,7 +42,7 @@ protected:
 };
 
 /* constructor */
-basic_server::basic_server(int port) :
+select_server::select_server(int port) :
     port(port) {
     server_fd = socket(AF_INET, SOCK_STREAM, 0);
     if (server_fd == -1) ERR_EXIT("socket error\n")
@@ -75,7 +77,7 @@ basic_server::basic_server(int port) :
 }
 
 /* main loop */
-void basic_server::loop() {
+void select_server::loop() {
     working_read_fds = read_fds;
     int ret = select(max_fd + 1, &working_read_fds, NULL, NULL, NULL);
     if (ret == -1) ERR_EXIT("select error\n")
@@ -101,14 +103,14 @@ void basic_server::loop() {
 }
 
 /* close a connection */
-void basic_server::close_conn(int conn_fd) {
+void select_server::close_conn(int conn_fd) {
     close(conn_fd);
     FD_CLR(conn_fd, &read_fds);
     cerr << "\033[31mConnection closed (" << conn_fd << ")\033[0m" << endl;
 }
 
 /* handle read from a connection (to be implemented) */
-void basic_server::handle_read(int conn_fd) {
+void select_server::handle_read(int conn_fd) {
     memset(buf, 0, sizeof(buf));
     int ret = recv(conn_fd, buf, sizeof(buf), 0);
     if (ret == -1) {
@@ -124,9 +126,117 @@ void basic_server::handle_read(int conn_fd) {
     return;
 }
 
-class http_server : public basic_server {
-    /* using basic_server constructor */
-    using basic_server::basic_server;
+/* server implemented using thread */
+class thread_server {
+public:
+    /* public attributes */
+    int port;
+    string ip;
+
+    /* public methods */
+    thread_server(int port);
+    void loop();
+
+protected:
+    /* protected attributes */
+    int max_fd;
+    int server_fd;
+    int max_conn_fd;
+    fd_set read_fds, working_read_fds;
+    char buf[BUFF_SIZE];
+    thread *threads[FD_SETSIZE];
+
+    /* protected methods */
+    void handle_thread(int conn_fd);
+    virtual void handle_read(int conn_fd);
+    void close_conn(int conn_fd);
+};
+
+/* constructor */
+thread_server::thread_server(int port) :
+    port(port) {
+    server_fd = socket(AF_INET, SOCK_STREAM, 0);
+    if (server_fd == -1) ERR_EXIT("socket error\n")
+    /* bind the socket to the port */
+    struct sockaddr_in addr;
+    bzero(&addr, sizeof(addr));
+    addr.sin_family = AF_INET;
+    addr.sin_port = htons(port);
+    addr.sin_addr.s_addr = htonl(INADDR_ANY);
+    int tmp = 1;
+    if (setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR, &tmp, sizeof(tmp)) == -1)
+        ERR_EXIT("setsockopt error\n")
+    if (::bind(server_fd, (struct sockaddr *) &addr, sizeof(addr)) == -1)
+        ERR_EXIT("bind error\n")
+    if (listen(server_fd, 1024) == -1)
+        ERR_EXIT("listen error\n")
+    /* get the hostname and ip of the server */
+    char hostname[64] = {0};
+    if (gethostname(hostname, sizeof(hostname)) == -1)
+        ERR_EXIT("gethostname error\n")
+    struct hostent *host = gethostbyname(hostname);
+    if (host == NULL) ERR_EXIT("gethostbyname error\n")
+    ip = inet_ntoa(*(struct in_addr *) host->h_addr_list[0]);
+    // for (int i = 0; host->h_addr_list[i]; i++)
+    //     cerr << "ip: " << inet_ntoa(*(struct in_addr *) host->h_addr_list[i]) << endl;
+    max_fd = server_fd;
+    max_conn_fd = FD_SETSIZE;
+    FD_ZERO(&read_fds);
+    FD_SET(server_fd, &read_fds);
+    cerr << "Server created at " << ip << ":" << port << " (" << server_fd << ")" << endl;
+    cerr << "---------------------------------------" << endl;
+}
+
+/* main loop */
+void thread_server::loop() {
+    struct sockaddr_in client_addr;
+    socklen_t client_len = sizeof(client_addr);
+    int conn_fd = accept(server_fd, (struct sockaddr *) &client_addr, &client_len);
+    if (conn_fd == -1) ERR_EXIT("accept error\n")
+    FD_SET(conn_fd, &read_fds);
+    if (conn_fd > max_fd) max_fd = conn_fd;
+    cerr << "\033[32mNew connection from " << inet_ntoa(client_addr.sin_addr) << ":" << ntohs(client_addr.sin_port) << " (" << conn_fd << ")\033[0m" << endl;
+    cerr << "---------------------------------------" << endl;
+    /* create a new thread to handle the connection */
+    threads[conn_fd] = new thread(&thread_server::handle_thread, this, conn_fd);
+}
+
+/* close a connection */
+void thread_server::close_conn(int conn_fd) {
+    close(conn_fd);
+    FD_CLR(conn_fd, &read_fds);
+    cerr << "\033[31mConnection closed (" << conn_fd << ")\033[0m" << endl;
+}
+
+/* handle thread */
+void thread_server::handle_thread(int conn_fd) {
+    while (true) {
+        handle_read(conn_fd);
+        cerr << "---------------------------------------" << endl;
+    }
+}
+
+/* handle read from a connection (to be implemented) */
+void thread_server::handle_read(int conn_fd) {
+    memset(buf, 0, sizeof(buf));
+    int ret = recv(conn_fd, buf, sizeof(buf), 0);
+    if (ret == -1) {
+        cerr << "recv error: " << strerror(errno) << endl;
+        close_conn(conn_fd);
+        return;
+    }
+    if (ret == 0) {
+        close_conn(conn_fd);
+        return;
+    }
+    cerr << "Read " << ret << " bytes (" << conn_fd << ")" << endl;
+    return;
+}
+
+/* http server */
+class http_server : public thread_server {
+    /* using thread_server constructor */
+    using thread_server::thread_server;
 
 protected:
     void handle_read(int conn_fd);
@@ -140,7 +250,7 @@ protected:
 
 /* handle read from a connection */
 void http_server::handle_read(int conn_fd) {
-    basic_server::handle_read(conn_fd);
+    thread_server::handle_read(conn_fd);
     http_request req = parse_request();
     if (req.method == "GET")
         handle_get(conn_fd, req);
@@ -254,6 +364,7 @@ string http_server::get_content_type(string file_type) {
     else return "application/octet-stream";
 }
 
+/* main loop */
 int main(int argc, char *argv[]) {
     if (argc != 2) ERR_EXIT("Usage: %s <port>", argv[0])
     /* ignore SIGPIPE */
