@@ -122,7 +122,6 @@ void select_server::handle_read(int conn_fd) {
         close_conn(conn_fd);
         return;
     }
-    cerr << "Read " << ret << " bytes (" << conn_fd << ")" << endl;
     return;
 }
 
@@ -204,7 +203,7 @@ void thread_server::close_conn(int conn_fd) {
 /* handle thread */
 void thread_server::handle_thread(int conn_fd) {
     while (true) {
-        cerr << "handle_thread: " << conn_fd << endl;
+        cerr << "(thread " << conn_fd << ") ";
         handle_read(conn_fd);
         cerr << "---------------------------------------" << endl;
     }
@@ -224,7 +223,6 @@ void thread_server::handle_read(int conn_fd) {
         close_conn(conn_fd);
         return;
     }
-    cerr << "Read " << ret << " bytes (" << conn_fd << ")" << endl;
     return;
 }
 
@@ -240,7 +238,7 @@ protected:
     int handle_get(int conn_fd, http_request &req);
     void send_string(int conn_fd, string res);
     void send_error(int conn_fd, http_request &req, int code, string msg, string desc);
-    string get_content_type(string file_type);
+    string get_mime_type(string file_type);
 };
 
 /* handle read from a connection */
@@ -287,20 +285,20 @@ int http_server::handle_get(int conn_fd, http_request &req) {
         file = ROOT;
         file += "/index.html";
     }
-    cerr << "File path: " << file << endl;
     if (access(file.c_str(), F_OK) == -1) {
-        cerr << "File not found" << endl;
+        log << "\"GET " << req.path << " " << req.version << "\" 404" << endl;
         send_error(conn_fd, req, NOT_FOUND);
         return 0;
     }
     ifstream fin(file, ios::binary);
     if (!fin) {
-        cerr << "File open error" << endl;
+        log << "\"GET " << req.path << " " << req.version << "\" 500" << endl;
         send_error(conn_fd, req, INTERNAL_SERVER_ERROR);
         return 0;
     }
-    string file_type = file.substr(file.find_last_of('.') + 1);
-    res.headers["Content-Type"] = get_content_type(file_type);
+    log << "\"GET " << req.path << " " << req.version << "\" 200" << endl;
+    res.headers["Content-Type"] = get_mime_type(file);
+    // cerr << "Content-Type: " << res.headers["Content-Type"] << endl;
     res.headers["Server"] = "Timyi's HTTP Server";
     fin.seekg(0, ios::end);
     int file_size = fin.tellg();
@@ -313,7 +311,8 @@ int http_server::handle_get(int conn_fd, http_request &req) {
     send_string(conn_fd, res.to_string());
     memset(buf, 0, sizeof(buf));
     while (fin.read(buf, BUFF_SIZE)) {
-        send(conn_fd, buf, BUFF_SIZE, 0);
+        int sent = send(conn_fd, buf, BUFF_SIZE, 0);
+        memset(buf, 0, sizeof(buf));
     }
     send(conn_fd, buf, fin.gcount(), 0);
     fin.close();
@@ -348,17 +347,24 @@ void http_server::send_error(int conn_fd, http_request &req, int code, string ms
     close_conn(conn_fd);
 }
 
-/* get content type */
-string http_server::get_content_type(string file_type) {
-    if (file_type == "html") return "text/html";
-    else if (file_type == "css") return "text/css";
-    else if (file_type == "js") return "text/javascript";
-    else if (file_type == "png") return "image/png";
-    else if (file_type == "ico") return "image/x-icon";
-    else if (file_type == "webp") return "image/webp";
-    else if (file_type == "svg") return "image/svg+xml";
-    else if (file_type == "mp4") return "video/mp4";
-    else return "application/octet-stream";
+/* get mime type */
+string http_server::get_mime_type(string file) {
+    // execute "file --mime <file>" command
+    string file_type = file.substr(file.find_last_of(".") + 1);
+    string cmd = "file --mime " + file;
+    FILE *fp = popen(cmd.c_str(), "r");
+    if (fp == NULL) {
+        cerr << "popen error: " << strerror(errno) << endl;
+        return "text/plain";
+    }
+    char buffer[1024];
+    fgets(buffer, sizeof(buffer), fp);
+    pclose(fp);
+    string mime_type = buffer;
+    mime_type = mime_type.substr(mime_type.find(": ") + 2);
+    mime_type = mime_type.substr(0, mime_type.length() - 1);
+    if (file_type == "css") return "text/css";  // fix css mime type
+    return mime_type;
 }
 
 /* main loop */
