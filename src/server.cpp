@@ -139,10 +139,8 @@ public:
 
 protected:
     /* protected attributes */
-    int max_fd;
     int server_fd;
     int max_conn_fd;
-    fd_set read_fds, working_read_fds;
     char buf[BUFF_SIZE];
     thread *threads[FD_SETSIZE];
 
@@ -179,10 +177,7 @@ thread_server::thread_server(int port) :
     ip = inet_ntoa(*(struct in_addr *) host->h_addr_list[0]);
     // for (int i = 0; host->h_addr_list[i]; i++)
     //     cerr << "ip: " << inet_ntoa(*(struct in_addr *) host->h_addr_list[i]) << endl;
-    max_fd = server_fd;
     max_conn_fd = FD_SETSIZE;
-    FD_ZERO(&read_fds);
-    FD_SET(server_fd, &read_fds);
     cerr << "Server created at " << ip << ":" << port << " (" << server_fd << ")" << endl;
     cerr << "---------------------------------------" << endl;
 }
@@ -193,24 +188,23 @@ void thread_server::loop() {
     socklen_t client_len = sizeof(client_addr);
     int conn_fd = accept(server_fd, (struct sockaddr *) &client_addr, &client_len);
     if (conn_fd == -1) ERR_EXIT("accept error\n")
-    FD_SET(conn_fd, &read_fds);
-    if (conn_fd > max_fd) max_fd = conn_fd;
+    /* create a new thread to handle the connection */
     cerr << "\033[32mNew connection from " << inet_ntoa(client_addr.sin_addr) << ":" << ntohs(client_addr.sin_port) << " (" << conn_fd << ")\033[0m" << endl;
     cerr << "---------------------------------------" << endl;
-    /* create a new thread to handle the connection */
     threads[conn_fd] = new thread(&thread_server::handle_thread, this, conn_fd);
+    threads[conn_fd]->detach();  // detach the thread so it can be automatically deleted
 }
 
 /* close a connection */
 void thread_server::close_conn(int conn_fd) {
     close(conn_fd);
-    FD_CLR(conn_fd, &read_fds);
     cerr << "\033[31mConnection closed (" << conn_fd << ")\033[0m" << endl;
 }
 
 /* handle thread */
 void thread_server::handle_thread(int conn_fd) {
     while (true) {
+        cerr << "handle_thread: " << conn_fd << endl;
         handle_read(conn_fd);
         cerr << "---------------------------------------" << endl;
     }
@@ -226,6 +220,7 @@ void thread_server::handle_read(int conn_fd) {
         return;
     }
     if (ret == 0) {
+        cerr << "Connection closed by peer (" << conn_fd << ")" << endl;
         close_conn(conn_fd);
         return;
     }
@@ -306,10 +301,12 @@ int http_server::handle_get(int conn_fd, http_request &req) {
     }
     string file_type = file.substr(file.find_last_of('.') + 1);
     res.headers["Content-Type"] = get_content_type(file_type);
+    res.headers["Server"] = "Timyi's HTTP Server";
     fin.seekg(0, ios::end);
     int file_size = fin.tellg();
     fin.seekg(0, ios::beg);
     cerr << "File size: " << file_size << endl;
+    // TODO: send partial content if range is specified
     res.status_code = 200;
     res.status_msg = "OK";
     res.headers["Content-Length"] = to_string(file_size);
