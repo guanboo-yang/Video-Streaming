@@ -139,7 +139,6 @@ public:
 protected:
     /* protected attributes */
     int server_fd;
-    int max_conn_fd;
     char buf[BUFF_SIZE];
     thread *threads[FD_SETSIZE];
 
@@ -160,6 +159,12 @@ thread_server::thread_server(int port) :
     addr.sin_family = AF_INET;
     addr.sin_port = htons(port);
     addr.sin_addr.s_addr = htonl(INADDR_ANY);
+    /* remove timeout? */
+    // struct timeval tv;
+    // tv.tv_sec = 0;
+    // tv.tv_usec = 0;
+    // if (setsockopt(server_fd, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv)) == -1)
+    //     ERR_EXIT("setsockopt error\n")
     int tmp = 1;
     if (setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR, &tmp, sizeof(tmp)) == -1)
         ERR_EXIT("setsockopt error\n")
@@ -176,7 +181,6 @@ thread_server::thread_server(int port) :
     ip = inet_ntoa(*(struct in_addr *) host->h_addr_list[0]);
     // for (int i = 0; host->h_addr_list[i]; i++)
     //     cerr << "ip: " << inet_ntoa(*(struct in_addr *) host->h_addr_list[i]) << endl;
-    max_conn_fd = FD_SETSIZE;
     cerr << "Server created at " << ip << ":" << port << " (" << server_fd << ")" << endl;
     cerr << "---------------------------------------" << endl;
 }
@@ -189,7 +193,7 @@ void thread_server::loop() {
     if (conn_fd == -1) ERR_EXIT("accept error\n")
     /* create a new thread to handle the connection */
     cerr << "\033[32mNew connection from " << inet_ntoa(client_addr.sin_addr) << ":" << ntohs(client_addr.sin_port) << " (" << conn_fd << ")\033[0m" << endl;
-    cerr << "---------------------------------------" << endl;
+    // cerr << "---------------------------------------" << endl;
     threads[conn_fd] = new thread(&thread_server::handle_thread, this, conn_fd);
     threads[conn_fd]->detach();  // detach the thread so it can be automatically deleted
 }
@@ -203,9 +207,9 @@ void thread_server::close_conn(int conn_fd) {
 /* handle thread */
 void thread_server::handle_thread(int conn_fd) {
     while (true) {
-        cerr << "(thread " << conn_fd << ") ";
+        // cerr << "(thread " << conn_fd << ") ";
         handle_read(conn_fd);
-        cerr << "---------------------------------------" << endl;
+        // cerr << "---------------------------------------" << endl;
     }
 }
 
@@ -286,17 +290,17 @@ int http_server::handle_get(int conn_fd, http_request &req) {
         file += "/index.html";
     }
     if (access(file.c_str(), F_OK) == -1) {
-        log << "\"GET " << req.path << " " << req.version << "\" 404" << endl;
+        cerr << "GET " << req.path << " 404" << endl;
         send_error(conn_fd, req, NOT_FOUND);
         return 0;
     }
     ifstream fin(file, ios::binary);
     if (!fin) {
-        log << "\"GET " << req.path << " " << req.version << "\" 500" << endl;
+        cerr << "GET " << req.path << " 500" << endl;
         send_error(conn_fd, req, INTERNAL_SERVER_ERROR);
         return 0;
     }
-    log << "\"GET " << req.path << " " << req.version << "\" 200" << endl;
+    cerr << "GET " << req.path << " 200" << endl;
     res.headers["Content-Type"] = get_mime_type(file);
     // cerr << "Content-Type: " << res.headers["Content-Type"] << endl;
     res.headers["Server"] = "Timyi's HTTP Server";
