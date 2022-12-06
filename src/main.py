@@ -1,5 +1,6 @@
-from thread_server import thread_server
+from thread_server import Server, Handler
 import argparse
+
 
 def parse_args():
     parser = argparse.ArgumentParser()
@@ -9,10 +10,12 @@ def parse_args():
     args = parser.parse_args()
     return args
 
+
 def main():
     args = parse_args()
-    server = thread_server(args.port, args.address)
-    server.loop()
+    server = Server(args.address, args.port, Handler("dist"))
+    server.run_forever()
+
 
 if __name__ == "__main__":
     main()

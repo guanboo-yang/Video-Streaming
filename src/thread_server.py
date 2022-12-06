@@ -1,150 +1,159 @@
+import signal
 import socket
 import threading
+import os
 import sys
-from http_msg import http_request, http_response
+from http_msg import HttpRequest, HttpResponse
 import http_status as http_SC
 import mimetypes
 
 BUFSIZE = 8192
 
-def errprint(*args, **kwargs):
+
+def eprint(*args, **kwargs):
     print(*args, file=sys.stderr, **kwargs)
 
-class thread_server:
-    def __init__(self, port_num, sock_addr="0.0.0.0", max_conn=50, root="dist"):
-        self.port_num = port_num
-        self.sock_addr = sock_addr
+
+class Server:
+    def __init__(self, addr, port, handler, max_conn=50):
+        self.addr = addr
+        self.port = port
+        self.handler = handler
         self.max_conn = max_conn
-        self.root = root
 
         # create server socket
-        self.serv_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.serv_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        self.serv_socket.bind((self.sock_addr, self.port_num))
-        self.serv_socket.listen(self.max_conn)
+        self.server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        self.server.bind((self.addr, self.port))
+        self.server.listen(self.max_conn)
 
-        # get hostname
+        # get hostname and ip address
         self.hostname = socket.gethostname()
-        # get ip address of self.hostname
-        self.ip_addr = socket.gethostbyname(self.hostname)
+        self.ip = socket.gethostbyname(self.hostname)
 
-        errprint(f"Server created at {self.ip_addr} : {self.port_num}")
-        errprint("---------------------------------------")
+        # register signal handler
+        signal.signal(signal.SIGINT, self.signal_handler)
 
-    def loop(self):
+        eprint(f"Server created at http://{self.ip}:{self.port} ({self.server.fileno()})")
+        eprint("---------------------------------------")
+
+    def run_forever(self):
         while True:
-            client, addr = self.serv_socket.accept()
-            errprint(f"New connection from IP address {addr[0]} port {addr[1]}")
-            # create new thread to handle client
-            thread = threading.Thread(target=self.handle_thread, args=(client, addr))
+            client, addr = self.server.accept()
+            thread = threading.Thread(target=self.handler, args=(client, addr), daemon=True)
             thread.start()
 
-    def handle_thread(self, client, addr):
-        errprint(f"Thread {threading.get_ident()} created")
-        cli_addr = addr
-        while(True):
-            status, data = self.handle_read(client)
-            if not status:
-                # client close connection
-                break
-            req: http_request = self.parse_request(data)
-            if req.method == "GET":
-                self.handle_get(client, req)
+    def signal_handler(self, sig, frame):
+        eprint("\rServer shutting down...")
+        self.server.close()
+        sys.exit(0)
 
-        errprint(f"Connection from IP address {cli_addr[0]} port {cli_addr[1]} closed, thread {threading.get_ident()} terminated")
+
+class Handler:
+    def __init__(self, root: str):
+        self.root = root
+
+    def __call__(self, client: socket.socket, addr: tuple[str, int]):
+        try:
+            # eprint(f"New connection from {addr[0]}:{addr[1]} ({client.fileno()})")
+            eprint(f"\033[32mNew connection from {addr[0]}:{addr[1]} ({client.fileno()})\033[0m")
+            self.client = client
+            self.rfile = client.makefile("rb", -1)
+            self.wfile = client.makefile("wb", 0)
+
+            while True:
+                # receive one request
+                req = HttpRequest()
+                try:
+                    req.parse(self.rfile)
+                except ConnectionResetError:
+                    break
+                if req.method == "GET":
+                    self.handle_get(client, req)
+                elif req.method == "POST":
+                    self.handle_post(client, req)
+                else:
+                    self.send_error(client, req, *http_SC.NOT_IMPLEMENTED)
+        except BrokenPipeError:
+            pass
+        self.exit_thread()
         return
 
-    def handle_read(self, client):
-        try:
-            data = client.recv(BUFSIZE)
-        except:
-            return False, None
-        return True, data.decode()
+    def exit_thread(self):
+        # eprint(f"Connection closed ({self.client.fileno()})")
+        eprint(f"\033[31mConnection closed ({self.client.fileno()})\033[0m")
+        # eprint(f"Active threads: {threading.active_count() - 1}")
+        # eprint([t.name for t in threading.enumerate()])
+        self.client.close()
+        sys.exit(0)
 
-    def parse_request(self, data):
-        fields = [s for s in data.split("\n") if s]
-        method, path, version = fields[0].rstrip().split(" ")
-        headers = dict()
-        now_h = 1
-        while fields[now_h] != "\r":
-            key, value = fields[now_h].rstrip().split(": ")
-            headers[key] = value
-            now_h += 1
-        
-        body = "\n".join(fields[now_h+1:])
-        req = http_request()
-        req.method = method
-        req.path = path
-        req.version = version
-        req.headers = headers
-        req.body = body
-        return req
-
-    def handle_get(self, client, req: http_request):
-        res = http_response()
+    def handle_get(self, client: socket.socket, req: HttpRequest):
+        res = HttpResponse()
         res.version = req.version
-        file_str: str = self.root + req.path
+        file_str = self.root + req.path
 
         # for single-page application
         if file_str.find(".") == -1:
             file_str = self.root + "/index.html"
 
-        # check if file exists
-        try:
-            with open(file_str, "r") as f:
-                pass
-        except:
-            errprint(f"GET {req.path} 404 Not Found")
-            self.send_error(client, req, *http_SC.NOT_FOUND)
-            return
-
-        # try to open file in binary
         try:
             f = open(file_str, "rb")
+        except FileNotFoundError:
+            eprint(f"GET {req.path} 404 Not Found")
+            self.send_error(client, req, *http_SC.NOT_FOUND)
+            return
+        except PermissionError:
+            eprint(f"GET {req.path} 403 Forbidden")
+            self.send_error(client, req, *http_SC.FORBIDDEN)
+            return
         except:
-            errprint(f"GET {req.path} 500 Internal Server Error")
+            eprint(f"GET {req.path} 500 Internal Server Error")
             self.send_error(client, req, *http_SC.INTERNAL_SERVER_ERROR)
             return
 
         # 200 OK
-        errprint(f"GET {req.path} 200 OK")
+        eprint(f"GET {req.path} 200 OK ({client.fileno()})")
         res.status_code = 200
         res.status_msg = "OK"
         res.headers["Content-Type"] = self.get_mime_type(file_str)
         res.headers["Server"] = "Project Demo for NTU CSIE Computer Network course"
-        res.headers["Content-Length"] = str(len(f.read()))
-        errprint(f"File Size: {res.headers['Content-Length']}")
-        # f seek to begining
-        f.seek(0)
+        f.seek(0, os.SEEK_END)
+        size = f.tell()
+        res.headers["Content-Length"] = str(size)
+        eprint(f"File Size: {res.headers['Content-Length']}")
+        client.send(res.encode())
 
+        # send file
+        f.seek(0)
         res.body = f.read()
-        # to-do: partial content if range is specified
+
+        # TODO: partial content if range is specified
         if "Range" in req.headers:
             pass
 
-        client.send(res.to_string(no_body=True).encode())
         client.send(res.body)
         f.close()
         return
 
-    def send_error(self, client, req: http_request, code: int, msg: str, desc: str):
-        res = http_response()
+    def send_error(self, client: socket.socket, req: HttpRequest, code: int, msg: str, desc: str):
+        res = HttpResponse()
         res.version = req.version
         res.status_code = code
         res.status_msg = msg
         res.headers["Content-Type"] = "text/html"
         error_page = self.root + "/error/" + str(code) + ".html"
-        
-        # try to open error_page file
+
         try:
-            with open(error_page, "r") as f:
-                res.body = f.read()
+            f = open(error_page, "rb")
         except:
-            res.body = desc
+            res.body = desc.encode()
+        else:
+            res.body = f.read()
+            f.close()
 
         res.headers["Content-Length"] = str(len(res.body))
-        client.send(res.to_string().encode())
-        client.close()
+        client.send(res.encode())
+        return
 
     def get_mime_type(self, file):
         mime, encoding = mimetypes.guess_type(file)
