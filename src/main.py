@@ -1,5 +1,6 @@
-from thread_server import Server, Handler
 import argparse
+
+from server import Server, Handler
 
 
 def parse_args():

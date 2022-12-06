@@ -5,9 +5,10 @@ import socket
 import threading
 import os
 import sys
-from http_msg import HttpRequest, HttpResponse
-import http_status as http_SC
 import mimetypes
+
+import utils.status as http_SC
+from utils.message import HttpRequest, HttpResponse
 
 BUFSIZE = 8192
 
