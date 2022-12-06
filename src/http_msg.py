@@ -8,7 +8,7 @@ class HttpRequest:
         self.path: str = ""
         self.version: str = ""
         self.headers: dict = {}
-        self.body: str = ""
+        self.body: bytes = b""
 
     def parse(self, rfile: io.BufferedReader):
         line = rfile.readline().decode()
@@ -30,7 +30,7 @@ class HttpRequest:
             return
 
         length = int(self.headers["Content-Length"])
-        body = rfile.read(length).decode()
+        body = rfile.read(length)
         self.body = body
         return
 

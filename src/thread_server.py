@@ -1,3 +1,5 @@
+import io
+import shutil
 import signal
 import socket
 import threading
@@ -52,14 +54,17 @@ class Server:
 class Handler:
     def __init__(self, root: str):
         self.root = root
+        self.client: socket.socket = None
+        self.rfile: io.BufferedReader = None
+        self.wfile: io.BufferedWriter = None
 
     def __call__(self, client: socket.socket, addr: tuple[str, int]):
         try:
-            # eprint(f"New connection from {addr[0]}:{addr[1]} ({client.fileno()})")
-            eprint(f"\033[32mNew connection from {addr[0]}:{addr[1]} ({client.fileno()})\033[0m")
             self.client = client
             self.rfile = client.makefile("rb", -1)
             self.wfile = client.makefile("wb", 0)
+            eprint(f"\033[32mNew connection from {addr[0]}:{addr[1]} ({self.client.fileno()})\033[0m")
+            # eprint([t.name for t in threading.enumerate()])
 
             while True:
                 # receive one request
@@ -69,25 +74,24 @@ class Handler:
                 except ConnectionResetError:
                     break
                 if req.method == "GET":
-                    self.handle_get(client, req)
+                    self.handle_get(req)
                 elif req.method == "POST":
-                    self.handle_post(client, req)
+                    self.handle_post(req)
                 else:
-                    self.send_error(client, req, *http_SC.NOT_IMPLEMENTED)
+                    self.send_error(req, *http_SC.NOT_IMPLEMENTED)
         except BrokenPipeError:
             pass
         self.exit_thread()
-        return
 
     def exit_thread(self):
-        # eprint(f"Connection closed ({self.client.fileno()})")
         eprint(f"\033[31mConnection closed ({self.client.fileno()})\033[0m")
+        # eprint(f"\033[31mConnection closed ({threading.current_thread().name})\033[0m")
         # eprint(f"Active threads: {threading.active_count() - 1}")
         # eprint([t.name for t in threading.enumerate()])
         self.client.close()
         sys.exit(0)
 
-    def handle_get(self, client: socket.socket, req: HttpRequest):
+    def handle_get(self, req: HttpRequest):
         res = HttpResponse()
         res.version = req.version
         file_str = self.root + req.path
@@ -100,19 +104,19 @@ class Handler:
             f = open(file_str, "rb")
         except FileNotFoundError:
             eprint(f"GET {req.path} 404 Not Found")
-            self.send_error(client, req, *http_SC.NOT_FOUND)
+            self.send_error(req, *http_SC.NOT_FOUND)
             return
         except PermissionError:
             eprint(f"GET {req.path} 403 Forbidden")
-            self.send_error(client, req, *http_SC.FORBIDDEN)
+            self.send_error(req, *http_SC.FORBIDDEN)
             return
         except:
             eprint(f"GET {req.path} 500 Internal Server Error")
-            self.send_error(client, req, *http_SC.INTERNAL_SERVER_ERROR)
+            self.send_error(req, *http_SC.INTERNAL_SERVER_ERROR)
             return
 
         # 200 OK
-        eprint(f"GET {req.path} 200 OK ({client.fileno()})")
+        eprint(f"GET {req.path} 200 OK ({self.client.fileno()})")
         res.status_code = 200
         res.status_msg = "OK"
         res.headers["Content-Type"] = self.get_mime_type(file_str)
@@ -121,21 +125,22 @@ class Handler:
         size = f.tell()
         res.headers["Content-Length"] = str(size)
         eprint(f"File Size: {res.headers['Content-Length']}")
-        client.send(res.encode())
+        self.wfile.write(res.encode())
 
         # send file
         f.seek(0)
-        res.body = f.read()
+        shutil.copyfileobj(f, self.wfile)
+        # res.body = f.read()
 
         # TODO: partial content if range is specified
         if "Range" in req.headers:
             pass
 
-        client.send(res.body)
+        # self.wfile.write(res.body)
         f.close()
         return
 
-    def send_error(self, client: socket.socket, req: HttpRequest, code: int, msg: str, desc: str):
+    def send_error(self, req: HttpRequest, code: int, msg: str, desc: str):
         res = HttpResponse()
         res.version = req.version
         res.status_code = code
@@ -152,7 +157,7 @@ class Handler:
             f.close()
 
         res.headers["Content-Length"] = str(len(res.body))
-        client.send(res.encode())
+        self.wfile.write(res.encode())
         return
 
     def get_mime_type(self, file):
