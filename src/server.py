@@ -1,7 +1,6 @@
 import datetime
 import io
 import shutil
-import signal
 import socket
 import threading
 import os
@@ -100,56 +99,11 @@ class Handler:
         self.client.close()
         sys.exit(0)
 
-    def handle_get(self):
-        file_str = self.root + self.request.path
-
-        if file_str.endswith("/"):
-            file_str += "index.html"
-
-        # for single-page application
-        # if file_str.find(".") == -1:
-        #     file_str = self.root + "/index.html"
-
-        try:
-            f = open(file_str, "rb")
-        except FileNotFoundError:
-            eprint(f"GET {self.request.path} 404 Not Found")
-            self.send_error(HttpStatus.NOT_FOUND)
-            return
-        except PermissionError:
-            eprint(f"GET {self.request.path} 403 Forbidden")
-            self.send_error(HttpStatus.FORBIDDEN)
-            return
-        except:
-            eprint(f"GET {self.request.path} 500 Internal Server Error")
-            self.send_error(HttpStatus.INTERNAL_SERVER_ERROR)
-            return
-
-        # 200 OK
-        self.send_response(HttpStatus.OK)
-        self.send_header("Content-Type", self.get_mime_type(file_str))
-        self.send_header("Content-Length", size := os.path.getsize(file_str))
-        # eprint(f"File Size: {size} bytes")
-        self.end_headers()
-
-        # send file
-        shutil.copyfileobj(f, self.wfile)
-        # res.body = f.read()
-
-        # TODO: partial content if range is specified
-        if "Range" in self.request.headers:
-            pass
-
-        # self.wfile.write(res.body)
-        f.close()
-        return
-
     def send_response(self, status: HttpStatus):
         self.headers = b""
         self.headers += f"{self.request.version} {status}\r\n".encode()
         self.send_header("Server", "Project Demo for NTU CSIE Computer Network course")
         self.send_header("Date", datetime.datetime.now().strftime("%a, %d %b %Y %H:%M:%S GMT"))
-        # eprint(f"{self.request.method} {self.request.path} {status} ({self.fd})")
         eprint(f"\033[33m{self.request.method}\033[0m {self.request.path} {status} ({self.fd})")
         return
 
