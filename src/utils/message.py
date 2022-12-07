@@ -1,4 +1,4 @@
-# http request and response
+# http request parser
 import io
 
 
@@ -42,24 +42,3 @@ class HttpRequest:
         ret += "\r\n"
         ret += self.body
         return ret
-
-
-class HttpResponse:
-    def __init__(self):
-        self.version: str = ""
-        self.status_code: int = ""
-        self.status_msg: str = ""
-        self.headers: dict = {}
-        self.body: bytes = b""
-
-    def __bytes__(self):
-        ret = self.version + " " + str(self.status_code) + " " + self.status_msg + "\r\n"
-        for key, value in self.headers.items():
-            ret += key + ": " + value + "\r\n"
-        ret += "\r\n"
-        ret = ret.encode()
-        ret += self.body
-        return ret
-
-    def encode(self):
-        return self.__bytes__()
