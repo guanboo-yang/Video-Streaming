@@ -146,19 +146,11 @@ class APIHandler(Handler):
             self.send_response(response)
 
     def api_get_comment(self):
-        cookies = self.parse_cookie(self.request.headers.get("Cookie"))
-
-        if self.check_login(cookies) is True:
-            ret = self.cdb.get_all_comment_json()
-            response = HttpResponse()
-            response.set_status(HttpStatus.OK)
-            response.set_body(json_str=ret)
-            self.send_response(response)
-        else:
-            response = HttpResponse()
-            response.set_status(HttpStatus.UNAUTHORIZED)
-            response.set_body(json_str=ERROR_RES_BODY.format('"Not logged in"'))
-            self.send_response(response)
+        ret = self.cdb.get_all_comment_json()
+        response = HttpResponse()
+        response.set_status(HttpStatus.OK)
+        response.set_body(json_str=ret)
+        self.send_response(response)
 
 
 def parse_args():
