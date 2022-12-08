@@ -91,7 +91,9 @@ class Handler:
 
                 method_name = "handle_" + self.request.method.lower()
                 if not hasattr(self, method_name):
-                    self.send_error(HttpStatus.NOT_IMPLEMENTED)
+                    response = HttpResponse()
+                    response.set_error(HttpStatus.NOT_IMPLEMENTED)
+                    self.send_response(response)
                     continue
                 method = getattr(self, method_name)
                 method()
