@@ -65,9 +65,16 @@ class HttpResponse:
         if cors:
             self.add_header("Access-Control-Allow-Origin", "*")
 
+    def __str__(self):
+        ret = self.status_line
+        for key, value in self.headers.items():
+            ret += key + ": " + value + "\r\n"
+        ret += "\r\n"
+        return ret
+
     def set_status(self, status: HttpStatus):
-        self.status_code = status.value
-        self.status_msg = status.name
+        self.status_code = status.code
+        self.status_msg = status.reason
         self.status_line = f"{self.version} {self.status_code} {self.status_msg}\r\n"
 
     def set_error(self, status: HttpStatus, root: str="dist"):
@@ -118,7 +125,6 @@ class HttpResponse:
             self.is_file_body = False
 
             self.body = json_str.encode()
-            print(self.body)
             self.add_header("Content-Length", str(len(self.body)))
             self.add_header("Content-Type", "application/json")
             return HttpStatus.OK
