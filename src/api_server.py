@@ -7,9 +7,6 @@ from database import UserDatabase, CommentDatabase
 
 import json
 
-ERROR_RES_BODY = {"success": False, "data": None}
-SUCC_RES_BODY = {"success": True, "data": None}
-
 class APIServer(Server):
     def __init__(self, addr: str, port: int, Handler: "Handler", clinet_timeout: int = 60, root="dist", max_conn=50):
         super().__init__(addr, port, Handler, clinet_timeout, root, max_conn)
@@ -59,10 +56,7 @@ class APIHandler(Handler):
         return self.server.check_login(cookies["session_id"])
 
     def get_regular_body(self, success: bool, data):
-        if success:
-            return json.dumps({"success": True, "data": data})
-        else:
-            return json.dumps({"success": False, "data": data})
+        return json.dumps({"success": success, "data": data})
 
     def handle_get(self):
         method_name = "api_get_" + self.request.path[1:].split("/")[0]
