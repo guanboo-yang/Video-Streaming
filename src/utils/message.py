@@ -49,7 +49,7 @@ class HttpRequest:
         return ret
 
 class HttpResponse:
-    def __init__(self, version: str="HTTP/1.1"):
+    def __init__(self, version: str="HTTP/1.1", cors=False):
         self.version: str = version
         self.status_code: int = ""
         self.status_msg: str = ""
@@ -62,6 +62,8 @@ class HttpResponse:
         # some default headers
         self.add_header("Server", "Project Demo for NTU CSIE Computer Network course")
         self.add_header("Date", datetime.datetime.now().strftime("%a, %d %b %Y %H:%M:%S GMT"))
+        if cors:
+            self.add_header("Access-Control-Allow-Origin", "*")
 
     def set_status(self, status: HttpStatus):
         self.status_code = status.value
@@ -116,6 +118,7 @@ class HttpResponse:
             self.is_file_body = False
 
             self.body = json_str.encode()
+            print(self.body)
             self.add_header("Content-Length", str(len(self.body)))
             self.add_header("Content-Type", "application/json")
             return HttpStatus.OK
