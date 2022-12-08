@@ -8,6 +8,7 @@ from database import UserDatabase, CommentDatabase
 import json
 
 ERROR_RES_BODY = '{{\n "success": false,\n "data": {0}\n}}'
+SUCC_RES_BODY = '{{\n "success": true,\n "data": {0}\n}}'
 
 class APIServer(Server):
     def __init__(self, addr: str, port: int, Handler: "Handler", clinet_timeout: int = 60, root="dist", max_conn=50):
@@ -84,12 +85,14 @@ class APIHandler(Handler):
         if ret:
             response = HttpResponse()
             response.set_status(HttpStatus.OK)
-            response.set_body(json_str='{{\n "success": true,\n "data": null\n}}')
+            response.add_header("Access-Control-Allow-Origin", "*")
+            response.set_body(json_str=json.dumps(SUCC_RES_BODY.format("null")))
             self.send_response(response)
         else:
             response = HttpResponse()
             response.set_status(HttpStatus.OK)
-            response.set_body(json_str=ERROR_RES_BODY.format('"User already exists"'))
+            response.add_header("Access-Control-Allow-Origin", "*")
+            response.set_body(json_str=json.dumps(ERROR_RES_BODY.format('"User already exists"')))
             self.send_response(response)
 
     def api_post_login(self):
@@ -101,13 +104,15 @@ class APIHandler(Handler):
             self.server.login(uid)
             response = HttpResponse()
             response.set_status(HttpStatus.OK)
+            response.add_header("Access-Control-Allow-Origin", "*")
             response.add_header("Set-Cookie", "session_id={}; path=/".format(uid))
-            response.set_body(json_str='{{\n "success": true\n}}')
+            response.set_body(json_str=json.dumps(SUCC_RES_BODY.format("null")))
             self.send_response(response)
         else:
             response = HttpResponse()
             response.set_status(HttpStatus.UNAUTHORIZED)
-            response.set_body(json_str=ERROR_RES_BODY.format('"Invalid username or password"'))
+            response.add_header("Access-Control-Allow-Origin", "*")
+            response.set_body(json_str=json.dumps(ERROR_RES_BODY.format('"Invalid username or password"')))
             self.send_response(response)
 
     def api_post_logout(self):
@@ -116,7 +121,8 @@ class APIHandler(Handler):
         if self.check_login(cookies) is False:
             response = HttpResponse()
             response.set_status(HttpStatus.UNAUTHORIZED)
-            response.set_body(json_str=ERROR_RES_BODY.format('"Not logged in"'))
+            response.add_header("Access-Control-Allow-Origin", "*")
+            response.set_body(json_str=json.dumps(ERROR_RES_BODY.format('"Not logged in"')))
             self.send_response(response)
         else:
             uid = cookies.get("session_id")
@@ -124,8 +130,9 @@ class APIHandler(Handler):
             self.server.logout(uid)
             response = HttpResponse()
             response.set_status(HttpStatus.OK)
+            response.add_header("Access-Control-Allow-Origin", "*")
             response.add_header("Set-Cookie", "session_id=; expires=Thu, 01 Jan 1970 00:00:00 GMT")
-            response.set_body(json_str='{{\n "success": true\n}}')
+            response.set_body(json_str=json.dumps(SUCC_RES_BODY.format("null")))
             self.send_response(response)
 
     def api_post_comment(self):
@@ -137,11 +144,13 @@ class APIHandler(Handler):
 
             response = HttpResponse()
             response.set_status(HttpStatus.OK)
+            response.add_header("Access-Control-Allow-Origin", "*")
             response.set_body(json_str=json.dumps({"success": True, "data": {"id": cid}}, indent=4))
             self.send_response(response)
         else:
             response = HttpResponse()
             response.set_status(HttpStatus.UNAUTHORIZED)
+            response.add_header("Access-Control-Allow-Origin", "*")
             response.set_body(json_str=ERROR_RES_BODY.format('"Not logged in"'))
             self.send_response(response)
 
@@ -149,6 +158,7 @@ class APIHandler(Handler):
         ret = self.cdb.get_all_comment_json()
         response = HttpResponse()
         response.set_status(HttpStatus.OK)
+        response.add_header("Access-Control-Allow-Origin", "*")
         response.set_body(json_str=ret)
         self.send_response(response)
 

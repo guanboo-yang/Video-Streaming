@@ -3,6 +3,7 @@ import io
 from utils.status import HttpStatus
 import datetime
 import mimetypes
+import os
 
 BASIC_TEMPLATE = "<!DOCTYPE html>\n<html>\n<head>\n    <title>{0}</title>\n</head>\n<body>\n    <h1>{0}</h1>\n    <p>{1}</p>\n</body>\n</html>\n"
 
@@ -55,6 +56,8 @@ class HttpResponse:
         self.status_line: str = ""
         self.headers: dict = {}
         self.body: bytes = b""
+        self.is_file_body: bool = False
+        self.body_file_path: str = ""
 
         # some default headers
         self.add_header("Server", "Project Demo for NTU CSIE Computer Network course")
@@ -99,12 +102,19 @@ class HttpResponse:
             if partial_range:
                 pass
             else:
-                self.body = f.read()
-                f.close()
-                self.add_header("Content-Length", str(len(self.body)))
+                # file exists
+                fsize = os.path.getsize(file_path)
+                # self.body = f.read()
+                # f.close()
+                self.body_file_path = file_path
+                self.is_file_body = True
+
+                self.add_header("Content-Length", str(fsize))
                 self.add_header("Content-Type", self.get_mime_type(file_path))
                 return HttpStatus.OK
         else:
+            self.is_file_body = False
+
             self.body = json_str.encode()
             self.add_header("Content-Length", str(len(self.body)))
             self.add_header("Content-Type", "application/json")
@@ -120,5 +130,15 @@ class HttpResponse:
         for key, value in self.headers.items():
             ret += f"{key}: {value}\r\n".encode()
         ret += b"\r\n"
-        ret += self.body
+        if self.is_file_body == False:
+            ret += self.body
         return ret
+
+    def send(self, wfile: io.BufferedWriter):
+        if self.status_line == "":
+            self.set_status(HttpStatus.OK)
+        
+        wfile.write(self.encode())
+        if self.is_file_body:
+            with open(self.body_file_path, "rb") as f:
+                wfile.write(f.read())
