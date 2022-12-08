@@ -48,8 +48,8 @@ class HttpRequest:
         return ret
 
 class HttpResponse:
-    def __init__(self):
-        self.version: str = "HTTP/1.1"
+    def __init__(self, version: str="HTTP/1.1"):
+        self.version: str = version
         self.status_code: int = ""
         self.status_msg: str = ""
         self.status_line: str = ""

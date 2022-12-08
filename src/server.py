@@ -40,11 +40,14 @@ class Server:
         eprint(f"Server starts, socket created at http://{self.ip}:{self.port} (sock_fd = {self.socket.fileno()})")
         eprint("---------------------------------------")
 
+    def get_handler(self):
+        return self.Handler(self.root, self.client_timeout)
+
     def mainloop(self):
         try:
             while True:
                 client, addr = self.socket.accept()
-                handler = self.Handler(self.root, self.client_timeout)
+                handler = self.get_handler()
                 thread = threading.Thread(target=handler, args=(client, addr), daemon=True, name=client.fileno())
                 eprint(f"\033[32mThread {thread.name} created, total: {threading.active_count()}\033[0m")
                 thread.start()
@@ -101,10 +104,12 @@ class Handler:
             return
 
     def pre_terminate(self, exception_type):
-        if exception_type in (ConnectionResetError, BrokenPipeError, TimeoutError):
+        if type(exception_type) in (ConnectionResetError, BrokenPipeError, socket.timeout):
             eprint(f"\033[31mConnection closed {self.addr[0]}:{self.addr[1]} (tid={self.tid})\033[0m")
         else:
             eprint(f"\033[31m{exception_type} (tid={self.tid})\033[0m")
+        self.rfile.close()
+        self.wfile.close()
         self.client.close()
 
     def send_response(self, response: HttpResponse):

@@ -43,14 +43,23 @@ class UserDatabase:
             self.save_users()
             return True
 
-    def find(self, name=None, uid=None):
+    def find(self, name=None, uid=None, name_only=False, id_only=False) -> dict:
         if name:
             if name in self.name_dict:
+                if name_only:
+                    return self.name_dict[name]["name"]
+                elif id_only:
+                    return self.name_dict[name]["id"]
                 return self.name_dict[name]
             else:
                 return None
         elif uid:
+            uid = int(uid)
             if uid in self.id_dict:
+                if name_only:
+                    return self.id_dict[uid]["name"]
+                elif id_only:
+                    return self.id_dict[uid]["id"]
                 return self.id_dict[uid]
             else:
                 return None
