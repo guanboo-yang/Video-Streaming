@@ -1,0 +1,6 @@
+@use 'vuetify/settings' with (
+  $body-font-family: 'Lato',
+  $color-pack: false,
+  // $textarea-enclosed-text-slot-padding: 12px,
+  $utilities: false
+);
