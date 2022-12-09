@@ -1,12 +1,11 @@
-INCLUDE = -Iinc
 TARGET = server
 
 .PHONY: clean
 
-all: $(TARGET)
+all: server api
 
-server: src/server.cpp
-	$(CXX) -std=c++11 $^ -o $@ $(INCLUDE)
+server: src/main.py
+	python3 src/main.py
 
-clean:
-	$(RM) $(TARGET)
+api: src/api_server.py
+	python3 src/api_server.py
