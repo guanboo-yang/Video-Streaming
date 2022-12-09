@@ -153,6 +153,21 @@ class APIHandler(Handler):
         response.set_body(json_str=ret)
         self.send_response(response)
 
+    def api_post_profile(self):
+        cookies = self.parse_cookie(self.request.headers.get("Cookie"))
+
+        if self.check_login(cookies) is True:
+            uid = cookies.get("session_id")
+
+            response = HttpResponse(cors=True)
+            response.set_status(HttpStatus.OK)
+            response.set_body(json_str=self.get_regular_body(True, {"name": self.udb.find(uid=uid, name_only=True)}))
+            self.send_response(response)
+        else:
+            response = HttpResponse(cors=True)
+            response.set_status(HttpStatus.UNAUTHORIZED)
+            response.set_body(json_str=self.get_regular_body(False, "Not logged in"))
+            self.send_response(response)
 
 def parse_args():
     parser = argparse.ArgumentParser()
