@@ -1,6 +1,7 @@
 import json
 import random
 import datetime
+from time import sleep
 
 class UserDatabase:
     def __init__(self, user_file: str="../db/user.json"):
@@ -83,7 +84,7 @@ class CommentDatabase:
         self.id_dict = {c["id"]: c for c in self.comments}
 
     def current_time_str(self):
-        return datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        return datetime.datetime.now().isoformat()
 
     def get_unique_id(self):
         while True:
