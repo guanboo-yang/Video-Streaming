@@ -118,7 +118,7 @@ class APIHandler(Handler):
             self.server.login(uid)
             response = HttpResponse(cors=self.get_cors())
             response.set_status(HttpStatus.OK)
-            response.add_header("Set-Cookie", "session_id={}; path=/; SameSite=None".format(uid))
+            response.add_header("Set-Cookie", "session_id={}; path=/; SameSite=None; Secure".format(uid))
             response.set_body(json_str=self.get_regular_body(True, None))
             self.send_response(response)
         else:
