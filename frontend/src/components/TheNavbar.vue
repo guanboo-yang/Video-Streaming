@@ -13,7 +13,7 @@
 
   const { isFetching, error, data, execute, canAbort, abort } = useFetch(
     () => import.meta.env.VITE_API_URL + 'logout',
-    { method: 'POST' },
+    { method: 'POST', credentials: 'include' },
     {
       immediate: false,
       afterFetch: ({ data, response }) => {

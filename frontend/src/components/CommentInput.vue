@@ -16,7 +16,7 @@
 
   const { isFetching, error, data, execute, canAbort, abort } = useFetch(
     () => import.meta.env.VITE_API_URL + 'comment',
-    { method: 'POST' },
+    { method: 'POST', credentials: 'include' },
     {
       immediate: false,
       beforeFetch: ({ url, options, cancel }) => {

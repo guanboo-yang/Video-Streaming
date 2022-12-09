@@ -1,6 +1,26 @@
 # Video-Streaming
 
 ## Usage
+
+- Main server
+
 ```bash
-/bin/bash run.sh
+make server
+```
+
+- API server
+
+```bash
+make api
+```
+- Build frontend
+
+```bash
+cd frontend && npm run build
+```
+
+- Test frontend
+
+```bash
+cd frontend && npm run dev
 ```
