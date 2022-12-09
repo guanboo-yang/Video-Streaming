@@ -49,7 +49,7 @@ class HttpRequest:
         return ret
 
 class HttpResponse:
-    def __init__(self, version: str="HTTP/1.1", cors=False):
+    def __init__(self, version: str="HTTP/1.1", cors=None):
         self.version: str = version
         self.status_code: int = ""
         self.status_msg: str = ""
@@ -62,8 +62,10 @@ class HttpResponse:
         # some default headers
         self.add_header("Server", "Project Demo for NTU CSIE Computer Network course")
         self.add_header("Date", datetime.datetime.now().strftime("%a, %d %b %Y %H:%M:%S GMT"))
-        if cors:
-            self.add_header("Access-Control-Allow-Origin", "*")
+        self.add_header("Access-Control-Allow-Credentials", "true")
+        
+        if cors is not None:
+            self.add_header("Access-Control-Allow-Origin", cors)
 
     def __str__(self):
         ret = self.status_line

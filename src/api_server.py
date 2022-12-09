@@ -38,6 +38,8 @@ class APIHandler(Handler):
         self.udb = UserDatabase(self.udb_path)
         self.cdb = CommentDatabase(self.cdb_path)
 
+        self.allow_methods = {"register": ["POST"], "login": ["POST"], "logout": ["POST"], "comment": ["POST", "GET"], "profile": ["POST"]}
+
     def set_server(self, server: "Server"):
         self.server = server
 
@@ -58,10 +60,13 @@ class APIHandler(Handler):
     def get_regular_body(self, success: bool, data):
         return json.dumps({"success": success, "data": data})
 
+    def get_cors(self):
+        return self.request.headers.get("Origin")
+
     def handle_get(self):
         method_name = "api_get_" + self.request.path[1:].split("/")[0]
         if not hasattr(self, method_name):
-            response = HttpResponse(cors=True)
+            response = HttpResponse(cors=self.get_cors())
             response.set_error(HttpStatus.NOT_IMPLEMENTED)
             self.send_response(response)
         else:
@@ -71,24 +76,35 @@ class APIHandler(Handler):
     def handle_post(self):
         method_name = "api_post_" + self.request.path[1:].split("/")[0]
         if not hasattr(self, method_name):
-            response = HttpResponse(cors=True)
+            response = HttpResponse(cors=self.get_cors())
             response.set_error(HttpStatus.NOT_IMPLEMENTED)
             self.send_response(response)
         else:
             method = getattr(self, method_name)
             method()
 
+    def handle_options(self):
+        # path = self.request.path[1:].split("/")[0]
+        method = self.request.headers.get("Access-Control-Request-Method")
+        headers = self.request.headers.get("Access-Control-Request-Headers")
+
+        response = HttpResponse(cors=self.get_cors())
+        response.set_status(HttpStatus.NO_CONTENT)
+        response.add_header("Access-Control-Allow-Methods", method)
+        response.add_header("Access-Control-Allow-Headers", headers)
+        self.send_response(response)
+
     def api_post_register(self):
         req = json.loads(self.request.body)
         ret = self.udb.add_user(req["name"], req["pass"])
 
         if ret:
-            response = HttpResponse(cors=True)
+            response = HttpResponse(cors=self.get_cors())
             response.set_status(HttpStatus.OK)
             response.set_body(json_str=self.get_regular_body(True, None))
             self.send_response(response)
         else:
-            response = HttpResponse(cors=True)
+            response = HttpResponse(cors=self.get_cors())
             response.set_status(HttpStatus.OK)
             response.set_body(json_str=self.get_regular_body(False, "Username already exists"))
             self.send_response(response)
@@ -100,13 +116,13 @@ class APIHandler(Handler):
         if uid:
             eprint(f"User {req['name']} (id: {str(uid)}) logged in")
             self.server.login(uid)
-            response = HttpResponse(cors=True)
+            response = HttpResponse(cors=self.get_cors())
             response.set_status(HttpStatus.OK)
             response.add_header("Set-Cookie", "session_id={}; path=/".format(uid))
             response.set_body(json_str=self.get_regular_body(True, None))
             self.send_response(response)
         else:
-            response = HttpResponse(cors=True)
+            response = HttpResponse(cors=self.get_cors())
             response.set_status(HttpStatus.UNAUTHORIZED)
             response.set_body(json_str=self.get_regular_body(False, "Invalid username or password"))
             self.send_response(response)
@@ -115,7 +131,7 @@ class APIHandler(Handler):
         cookies = self.parse_cookie(self.request.headers.get("Cookie"))
 
         if self.check_login(cookies) is False:
-            response = HttpResponse(cors=True)
+            response = HttpResponse(cors=self.get_cors())
             response.set_status(HttpStatus.UNAUTHORIZED)
             response.set_body(json_str=self.get_regular_body(False, "Not logged in"))
             self.send_response(response)
@@ -123,7 +139,7 @@ class APIHandler(Handler):
             uid = cookies.get("session_id")
             eprint(f"User {self.udb.find(uid=uid, name_only=True)} (id: {str(uid)}) logged out")
             self.server.logout(uid)
-            response = HttpResponse(cors=True)
+            response = HttpResponse(cors=self.get_cors())
             response.set_status(HttpStatus.OK)
             response.add_header("Set-Cookie", "session_id=; expires=Thu, 01 Jan 1970 00:00:00 GMT")
             response.set_body(json_str=self.get_regular_body(True, None))
@@ -136,19 +152,19 @@ class APIHandler(Handler):
             req = json.loads(self.request.body)
             cid = self.cdb.add_comment(req["user"], req["comment"])
 
-            response = HttpResponse(cors=True)
+            response = HttpResponse(cors=self.get_cors())
             response.set_status(HttpStatus.OK)
             response.set_body(json_str=self.get_regular_body(True, {"id": cid}))
             self.send_response(response)
         else:
-            response = HttpResponse(cors=True)
+            response = HttpResponse(cors=self.get_cors())
             response.set_status(HttpStatus.UNAUTHORIZED)
             response.set_body(json_str=self.get_regular_body(False, "Not logged in"))
             self.send_response(response)
 
     def api_get_comment(self):
         ret = self.cdb.get_all_comment_json()
-        response = HttpResponse(cors=True)
+        response = HttpResponse(cors=self.get_cors())
         response.set_status(HttpStatus.OK)
         response.set_body(json_str=ret)
         self.send_response(response)
@@ -159,12 +175,12 @@ class APIHandler(Handler):
         if self.check_login(cookies) is True:
             uid = cookies.get("session_id")
 
-            response = HttpResponse(cors=True)
+            response = HttpResponse(cors=self.get_cors())
             response.set_status(HttpStatus.OK)
             response.set_body(json_str=self.get_regular_body(True, {"name": self.udb.find(uid=uid, name_only=True)}))
             self.send_response(response)
         else:
-            response = HttpResponse(cors=True)
+            response = HttpResponse(cors=self.get_cors())
             response.set_status(HttpStatus.UNAUTHORIZED)
             response.set_body(json_str=self.get_regular_body(False, "Not logged in"))
             self.send_response(response)
