@@ -1,6 +1,6 @@
 <script setup lang="ts">
   import { useFetch } from '@vueuse/core'
-  import { onBeforeUnmount, ref } from 'vue'
+  import { onBeforeUnmount } from 'vue'
   import { getRelativeTime } from '../utils'
   import CommentInput from './CommentInput.vue'
 
@@ -26,6 +26,17 @@
     }[]
   >()
 
+  const addComment = (name: string, comment: string) => {
+    comments.value = [
+      {
+        name: name,
+        time: new Date().toISOString(),
+        comment,
+      },
+      ...(comments.value || []),
+    ]
+  }
+
   onBeforeUnmount(() => canAbort && abort())
 </script>
 
@@ -33,12 +44,12 @@
   <v-card>
     <v-card-title class="h2"> {{ comments ? comments.length : 0 }} Comments</v-card-title>
   </v-card>
-  <comment-input :comment-number="comments ? comments.length : 0" />
+  <comment-input :comment-number="comments ? comments.length : 0" :add-comment="addComment" />
   <!-- is fetching -->
   <v-progress-linear v-if="isFetching" indeterminate />
   <!-- error -->
   <v-alert v-else-if="error" type="error">
-    {{ error.message }}
+    {{ error }}
   </v-alert>
   <!-- no comments -->
   <v-card v-else-if="!comments || !comments.length" style="text-align: center">

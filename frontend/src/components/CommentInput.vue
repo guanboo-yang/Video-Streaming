@@ -5,8 +5,9 @@
   import { useUser } from '../hooks'
   import DialogLogin from './DialogLogin.vue'
 
-  defineProps<{
+  const props = defineProps<{
     commentNumber: number
+    addComment: (name: string, comment: string) => void
   }>()
 
   const { profile, isLoggedIn } = useUser()
@@ -28,6 +29,8 @@
       afterFetch: ({ data, response }) => {
         if (response.ok) {
           // Post comment success
+          // add comment to list locally
+          props.addComment(profile.value.name, comment.value)
           comment.value = ''
         }
         return { data, response }
