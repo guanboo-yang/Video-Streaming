@@ -181,7 +181,7 @@ class APIHandler(Handler):
             self.send_response(response)
         else:
             response = HttpResponse(cors=self.get_cors())
-            response.set_status(HttpStatus.UNAUTHORIZED)
+            response.set_status(HttpStatus.OK)
             response.set_body(json_str=self.get_regular_body(False, "Not logged in"))
             self.send_response(response)
 
