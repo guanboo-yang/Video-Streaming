@@ -28,6 +28,7 @@ def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("-p", "--port", type=int, default=4567)
     parser.add_argument("-a", "--address", type=str, default="0.0.0.0")
+    parser.add_argument("-r", "--root", type=str, default="dist")
 
     args = parser.parse_args()
     return args
@@ -35,7 +36,7 @@ def parse_args():
 
 def main():
     args = parse_args()
-    server = Server(args.address, args.port, MainHandler)
+    server = Server(args.address, args.port, MainHandler, root=args.root)
     server.mainloop()
 
 
