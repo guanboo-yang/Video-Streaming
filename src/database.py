@@ -27,6 +27,10 @@ class UserDatabase:
             f.close()
             return users["users"]
 
+    def update_user_dict(self):
+        self.name_dict = {u["name"]: u for u in self.users}
+        self.id_dict = {u["id"]: u for u in self.users}
+
     def save_users(self):
         try:
             f = open(self.user_file, "w")
@@ -45,6 +49,8 @@ class UserDatabase:
             return True
 
     def find(self, name=None, uid=None, name_only=False, id_only=False) -> dict:
+        self.users = self.load_users()
+        self.update_user_dict()
         if name:
             if name in self.name_dict:
                 if name_only:
@@ -68,6 +74,8 @@ class UserDatabase:
             return None
 
     def validate(self, name, password):
+        self.users = self.load_users()
+        self.update_user_dict()
         if name not in self.name_dict.keys():
             return 0
         else:
@@ -118,5 +126,5 @@ class CommentDatabase:
         return cid
 
     def get_all_comment_json(self):
-        self.load_comments()
+        self.comments = self.load_comments()
         return json.dumps({"success": True, "data": [{"name": c["name"], "comment": c["comment"], "time": c["time"]} for c in self.comments]}, indent=4)
