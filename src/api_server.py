@@ -169,7 +169,7 @@ class APIHandler(Handler):
         response.set_body(json_str=ret)
         self.send_response(response)
 
-    def api_post_profile(self):
+    def api_get_profile(self):
         cookies = self.parse_cookie(self.request.headers.get("Cookie"))
 
         if self.check_login(cookies) is True:
