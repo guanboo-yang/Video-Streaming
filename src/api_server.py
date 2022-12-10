@@ -38,7 +38,7 @@ class APIHandler(Handler):
         self.udb = UserDatabase(self.udb_path)
         self.cdb = CommentDatabase(self.cdb_path)
 
-        self.allow_methods = {"register": ["POST"], "login": ["POST"], "logout": ["POST"], "comment": ["POST", "GET"], "profile": ["POST"]}
+        self.allow_methods = {"register": ["POST"], "login": ["POST"], "logout": ["POST"], "comment": ["POST", "GET"], "profile": ["GET"]}
 
     def set_server(self, server: "Server"):
         self.server = server
@@ -118,7 +118,7 @@ class APIHandler(Handler):
             self.server.login(uid)
             response = HttpResponse(cors=self.get_cors())
             response.set_status(HttpStatus.OK)
-            response.add_header("Set-Cookie", "session_id={}; path=/; SameSite=None".format(uid))
+            response.add_header("Set-Cookie", "session_id={}; path=/; SameSite=lax".format(uid))
             response.set_body(json_str=self.get_regular_body(True, None))
             self.send_response(response)
         else:
@@ -141,7 +141,7 @@ class APIHandler(Handler):
             self.server.logout(uid)
             response = HttpResponse(cors=self.get_cors())
             response.set_status(HttpStatus.OK)
-            response.add_header("Set-Cookie", "session_id=; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=None")
+            response.add_header("Set-Cookie", "session_id=; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=lax")
             response.set_body(json_str=self.get_regular_body(True, None))
             self.send_response(response)
 
