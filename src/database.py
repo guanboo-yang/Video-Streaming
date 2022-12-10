@@ -118,4 +118,5 @@ class CommentDatabase:
         return cid
 
     def get_all_comment_json(self):
+        self.load_comments()
         return json.dumps({"success": True, "data": [{"name": c["name"], "comment": c["comment"], "time": c["time"]} for c in self.comments]}, indent=4)

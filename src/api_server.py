@@ -118,7 +118,7 @@ class APIHandler(Handler):
             self.server.login(uid)
             response = HttpResponse(cors=self.get_cors())
             response.set_status(HttpStatus.OK)
-            response.add_header("Set-Cookie", "session_id={}; path=/; SameSite=None; Secure".format(uid))
+            response.add_header("Set-Cookie", "session_id={}; path=/; SameSite=None".format(uid))
             response.set_body(json_str=self.get_regular_body(True, None))
             self.send_response(response)
         else:
@@ -141,7 +141,7 @@ class APIHandler(Handler):
             self.server.logout(uid)
             response = HttpResponse(cors=self.get_cors())
             response.set_status(HttpStatus.OK)
-            response.add_header("Set-Cookie", "session_id=; expires=Thu, 01 Jan 1970 00:00:00 GMT")
+            response.add_header("Set-Cookie", "session_id=; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=None")
             response.set_body(json_str=self.get_regular_body(True, None))
             self.send_response(response)
 
