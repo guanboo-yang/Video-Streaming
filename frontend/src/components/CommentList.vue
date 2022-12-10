@@ -10,11 +10,9 @@
     data: comments,
     canAbort,
     abort,
-  } = useFetch(() => import.meta.env.VITE_API_URL + 'comment', {
+  } = useFetch(() => import.meta.env.VITE_API_URL + '/comment', {
     afterFetch: async ({ data, response }) => {
       if (response.ok) {
-        // wait for 1 second
-        await new Promise(resolve => setTimeout(resolve, 1000))
       }
       return { data: data.data, response }
     },
@@ -67,7 +65,7 @@
         {{ comment.name }}
         <span class="time">{{ getRelativeTime(comment.time) }}</span>
       </v-list-item-title>
-      <v-list-item-subtitle>{{ comment.comment }}</v-list-item-subtitle>
+      <v-list-item-subtitle style="white-space: pre-wrap">{{ comment.comment }}</v-list-item-subtitle>
     </v-list-item>
   </v-list>
 </template>

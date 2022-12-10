@@ -15,7 +15,7 @@
   const showLoginDialog = ref(false)
 
   const { isFetching, error, data, execute, canAbort, abort } = useFetch(
-    () => import.meta.env.VITE_API_URL + 'comment',
+    () => import.meta.env.VITE_API_URL + '/comment',
     { method: 'POST', credentials: 'include' },
     {
       immediate: false,
@@ -48,7 +48,7 @@
     <v-card-item style="align-items: start" @click="isLoggedIn || (showLoginDialog = true)">
       <template #prepend>
         <v-avatar size="36">
-          <v-img v-if="isLoggedIn" :src="`https://api.multiavatar.com/${profile.name}.svg`" />
+          <v-img v-if="isLoggedIn && profile" :src="`https://api.multiavatar.com/${profile.name}.svg`" />
           <v-icon v-else size="36">
             {{ mdiAccountCircle }}
           </v-icon>

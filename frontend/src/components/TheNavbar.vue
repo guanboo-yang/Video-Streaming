@@ -1,32 +1,10 @@
 <script setup lang="ts">
   import { mdiBrightness2, mdiWhiteBalanceSunny, mdiAccountCircle } from '@mdi/js'
-  import { useFetch } from '@vueuse/core'
-  import { onBeforeUnmount } from 'vue'
-  // import { RouteRecordRaw, useRouter } from 'vue-router'
-  import { useMyTheme, useUser } from '../hooks'
+  import { useLogout, useMyTheme, useUser } from '../hooks'
 
-  // const router = useRouter()
   const { mode, nextMode } = useMyTheme()
-  const { profile, isLoggedIn, logout } = useUser()
-
-  // const routes = router.getRoutes().filter((route: RouteRecordRaw) => route.meta?.icon)
-
-  const { isFetching, error, data, execute, canAbort, abort } = useFetch(
-    () => import.meta.env.VITE_API_URL + 'logout',
-    { method: 'POST', credentials: 'include' },
-    {
-      immediate: false,
-      afterFetch: ({ data, response }) => {
-        if (response.ok) {
-          // Logout success
-          logout()
-        }
-        return { data, response }
-      },
-    }
-  ).json()
-
-  onBeforeUnmount(() => canAbort && abort())
+  const { profile, isLoggedIn } = useUser()
+  const { execute: logout } = useLogout()
 </script>
 
 <template>
@@ -39,36 +17,19 @@
       <v-icon size="large">
         {{ mode === 'light' ? mdiBrightness2 : mdiWhiteBalanceSunny }}
       </v-icon>
+      <v-tooltip activator="parent" location="bottom"> Toggle light/dark theme </v-tooltip>
     </v-btn>
-    <v-btn v-if="isLoggedIn" icon size="small" aria-label="Logout" @click="execute()">
+    <v-btn v-if="isLoggedIn" icon size="small" aria-label="Logout" @click="logout()">
       <v-avatar size="small">
         <v-img :src="`https://api.multiavatar.com/${profile.name}.svg`" />
       </v-avatar>
+      <v-tooltip activator="parent" location="bottom" scrim> {{ profile.name }}, Click to logout </v-tooltip>
     </v-btn>
     <v-btn v-else icon size="small" aria-label="Login" to="/login">
       <v-icon size="large">
         {{ mdiAccountCircle }}
       </v-icon>
+      <v-tooltip activator="parent" location="bottom" scrim> Login </v-tooltip>
     </v-btn>
   </v-app-bar>
 </template>
-
-<!-- <v-bottom-navigation bgColor="primary" mandatory grow class="elevation-24">
-  <v-btn v-for="link in routes" :key="link.name" :to="{ name: link.name }">
-    <v-icon size="large">{{ link.meta?.icon }}</v-icon>
-    <span style="margin-top: 2px; text-transform: uppercase">
-      {{ link.name }}
-    </span>
-  </v-btn>
-</v-bottom-navigation> -->
-
-<style scoped lang="scss">
-  // .v-bottom-navigation .v-btn {
-  //   &.v-btn--active :deep(.v-btn__overlay) {
-  //     background: transparent !important;
-  //   }
-  //   &:not(.v-btn--active) {
-  //     opacity: 0.6;
-  //   }
-  // }
-</style>

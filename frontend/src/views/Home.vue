@@ -46,9 +46,11 @@
             <v-card-actions @click="isLoggedIn || (showLoginDialog = true)">
               <v-btn :prepend-icon="mdiThumbUp" variant="outlined" rounded="pill" :disabled="!isLoggedIn">
                 {{ info.likes }}
+                <v-tooltip activator="parent" location="bottom"> I like this </v-tooltip>
               </v-btn>
               <v-btn :prepend-icon="mdiThumbDown" variant="outlined" rounded="pill" :disabled="!isLoggedIn">
                 {{ info.dislikes }}
+                <v-tooltip activator="parent" location="bottom"> I dislike this </v-tooltip>
               </v-btn>
             </v-card-actions>
           </v-card>

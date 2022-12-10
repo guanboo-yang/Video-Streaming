@@ -16,11 +16,13 @@ make api
 - Build frontend
 
 ```bash
-cd frontend && npm run build
+cd frontend
+npm run build
 ```
 
 - Test frontend
 
 ```bash
-cd frontend && npm run dev
+cd frontend
+npm run dev
 ```

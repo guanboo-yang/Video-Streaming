@@ -28,4 +28,9 @@
   .v-card {
     transition-property: box-shadow, opacity !important;
   }
+  /* change tooltip color */
+  .v-overlay__content {
+    background-color: #000000b0 !important;
+    color: #fff !important;
+  }
 </style>
