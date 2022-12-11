@@ -29,8 +29,7 @@
 <template>
   <v-main>
     <div class="video-container">
-      <video controls />
-      <!-- <video controls src="/assets/video.mp4" /> -->
+      <video controls src="videos/video.mp4" />
     </div>
     <v-container style="padding-bottom: 1rem">
       <v-row>
