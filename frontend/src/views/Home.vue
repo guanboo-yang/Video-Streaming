@@ -13,6 +13,7 @@
 
   const info = ref({
     title: '[5452] LEC-11 (20221121)',
+    src: 'videos/video.mp4',
     description: '',
     views: 283,
     likes: 3,
@@ -29,7 +30,9 @@
 <template>
   <v-main>
     <div class="video-container">
-      <video controls src="videos/video.mp4" />
+      <video controls autoplay>
+        <source :src="info.src" type="video/mp4" />
+      </video>
     </div>
     <v-container style="padding-bottom: 1rem">
       <v-row>
