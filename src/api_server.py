@@ -8,13 +8,16 @@ from database import UserDatabase, CommentDatabase
 import json
 
 class APIServer(Server):
-    def __init__(self, addr: str, port: int, Handler: "Handler", clinet_timeout: int = 60, root="dist", max_conn=50):
+    def __init__(self, addr: str, port: int, Handler: "Handler", clinet_timeout: int = 60, udb_path="./db/user.json", cdb_path="./db/comment.json", root="dist", max_conn=50):
         super().__init__(addr, port, Handler, clinet_timeout, root, max_conn)
         self.online_users = dict()
+        self.udb = UserDatabase(udb_path)
+        self.cdb = CommentDatabase(cdb_path)
     
     def get_handler(self):
         ret = super().get_handler()
         ret.set_server(self)
+        ret.set_db(self.udb, self.cdb)
         return ret
 
     def check_login(self, user_id):
@@ -31,17 +34,17 @@ class APIServer(Server):
             del self.online_users[user_id]
 
 class APIHandler(Handler):
-    def __init__(self, root: str, client_timeout=60, udb_path = "./db/user.json", cdb_path = "./db/comment.json"):
+    def __init__(self, root: str, client_timeout=60):
         super().__init__(root, client_timeout)
-        self.udb_path = udb_path
-        self.cdb_path = cdb_path
-        self.udb = UserDatabase(self.udb_path)
-        self.cdb = CommentDatabase(self.cdb_path)
 
-        self.allow_methods = {"register": ["POST"], "login": ["POST"], "logout": ["POST"], "comment": ["POST", "GET"], "profile": ["GET"]}
+        self.allow_methods = {"register": ["POST"], "login": ["POST"], "logout": ["POST"], "comment": ["POST", "GET"], "profile": ["POST"]}
 
     def set_server(self, server: "Server"):
         self.server = server
+
+    def set_db(self, udb, cdb):
+        self.udb = udb
+        self.cdb = cdb
 
     def parse_cookie(self, cookies):
         if cookies is None:
@@ -105,7 +108,7 @@ class APIHandler(Handler):
             self.send_response(response)
         else:
             response = HttpResponse(cors=self.get_cors())
-            response.set_status(HttpStatus.OK)
+            response.set_status(HttpStatus.UNAUTHORIZED)
             response.set_body(json_str=self.get_regular_body(False, "Username already exists"))
             self.send_response(response)
 
@@ -181,7 +184,7 @@ class APIHandler(Handler):
             self.send_response(response)
         else:
             response = HttpResponse(cors=self.get_cors())
-            response.set_status(HttpStatus.OK)
+            response.set_status(HttpStatus.UNAUTHORIZED)
             response.set_body(json_str=self.get_regular_body(False, "Not logged in"))
             self.send_response(response)
 

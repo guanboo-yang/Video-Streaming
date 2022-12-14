@@ -116,6 +116,7 @@ class Handler:
 
     def send_response(self, response: HttpResponse):
         self.wfile.write(response.encode())
+        
         if response.is_file_body:
             with open(response.body_file_path, "rb") as f:
                 shutil.copyfileobj(f, self.wfile)

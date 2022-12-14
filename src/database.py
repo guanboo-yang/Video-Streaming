@@ -1,7 +1,6 @@
 import json
 import random
 import datetime
-from time import sleep
 
 class UserDatabase:
     def __init__(self, user_file: str="../db/user.json"):

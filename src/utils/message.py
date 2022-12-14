@@ -49,7 +49,7 @@ class HttpRequest:
         return ret
 
 class HttpResponse:
-    def __init__(self, version: str="HTTP/1.1", cors=None):
+    def __init__(self, version: str="HTTP/1.1", cors=None, ranges=False):
         self.version: str = version
         self.status_code: int = ""
         self.status_msg: str = ""
@@ -63,7 +63,9 @@ class HttpResponse:
         self.add_header("Server", "Project Demo for NTU CSIE Computer Network course")
         self.add_header("Date", datetime.datetime.now().strftime("%a, %d %b %Y %H:%M:%S GMT"))
         self.add_header("Access-Control-Allow-Credentials", "true")
-        
+        if ranges:
+            self.add_header("Accept-Ranges", "bytes")
+
         if cors is not None:
             self.add_header("Access-Control-Allow-Origin", cors)
 
@@ -110,18 +112,71 @@ class HttpResponse:
             except:
                 return HttpStatus.INTERNAL_SERVER_ERROR
 
-            if partial_range:
-                pass
+            if partial_range is not None:
+
+                file_size = os.path.getsize(file_path)
+                file_type = self.get_mime_type(file_path)
+
+                # multirange
+                if len(partial_range) > 1:
+                    boundary = "3d6b6a416f9b5" # from mozilla
+
+                    self.add_header("Content-Type", "multipart/byteranges; boundary=" + boundary)
+
+                    for r in partial_range:
+                        if r[1] == -1:
+                            r[1] = file_size - 1
+
+                        self.body += ("--" + boundary + "\r\n").encode()
+                        self.body += ("Content-Type: " + file_type + "\r\n").encode()
+                        self.body += ("Content-Range: bytes " + str(r[0]) + "-" + str(r[1]) + "/" + str(file_size) + "\r\n\r\n").encode()
+
+                        f.seek(r[0], 0)
+                        self.body += f.read(r[1] - r[0] + 1)
+                    
+                    self.body += ("--" + boundary + "--\r\n").encode()
+
+                    self.add_header("Content-Length", str(len(self.body)))
+                
+                # single range
+                elif len(partial_range) == 1:
+                    start = partial_range[0][0]
+                    end = partial_range[0][1]
+
+                    if end == -1:
+                        end = file_size - 1
+
+                    self.add_header("Content-Range", "bytes " + str(start) + "-" + str(end) + "/" + str(file_size))
+                    self.add_header("Content-Length", str(end - start + 1))
+
+                    f.seek(start, 0)
+                    self.body = f.read(end - start + 1)
+                    self.add_header("Content-Type", file_type)
+
+                # write body to tmp file: dist/videos/tmp
+                tmp_file_path = "dist/tmp"
+                tmp_file = open(tmp_file_path, "wb")
+                tmp_file.write(self.body)
+                tmp_file.close()
+
+                self.body = b""
+
+                self.body_file_path = tmp_file_path
+                self.is_file_body = True
+
+                f.close()
+                return HttpStatus.PARTIAL_CONTENT
+
             else:
                 # file exists
                 fsize = os.path.getsize(file_path)
-                # self.body = f.read()
-                # f.close()
                 self.body_file_path = file_path
                 self.is_file_body = True
 
                 self.add_header("Content-Length", str(fsize))
                 self.add_header("Content-Type", self.get_mime_type(file_path))
+                
+                f.close()
                 return HttpStatus.OK
         else:
             self.is_file_body = False
@@ -141,15 +196,8 @@ class HttpResponse:
         for key, value in self.headers.items():
             ret += f"{key}: {value}\r\n".encode()
         ret += b"\r\n"
+
         if self.is_file_body == False:
             ret += self.body
-        return ret
 
-    def send(self, wfile: io.BufferedWriter):
-        if self.status_line == "":
-            self.set_status(HttpStatus.OK)
-        
-        wfile.write(self.encode())
-        if self.is_file_body:
-            with open(self.body_file_path, "rb") as f:
-                wfile.write(f.read())
+        return ret
